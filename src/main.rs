@@ -133,15 +133,18 @@ async fn main() {
                     ui.slider(hash!(), "logfireprob", -10f32..-5f32, &mut logfireprob);
                     ui.slider(hash!(), "logtreeprob", -10f32..-2f32, &mut logtreeprob);
                     ui.slider(hash!(), "colorspeed", 0f32..10f32, &mut colorspeed);
-                    let btext: String = match recording {
-                        false => "Start Recording".to_string(),
-                        true => format!("Recording {}", rfrm).to_string(),
-                    };
-                    if ui.button(None, btext) {
-                        rfrm = 0;
-                        recording = !recording;
-                    }
-                    ui.slider(hash!(), "recskip", 1f32..10f32, &mut recskip);
+
+                    ui.tree_node(hash!(), "Save PNG", |ui| {
+                        let btext: String = match recording {
+                            false => "Start Recording".to_string(),
+                            true => format!("Recording {}", rfrm).to_string(),
+                        };
+                        if ui.button(None, btext) {
+                            rfrm = 0;
+                            recording = !recording;
+                        }
+                        ui.slider(hash!(), "recskip", 1f32..10f32, &mut recskip);
+                    });
                 });
         }
 
@@ -170,8 +173,6 @@ async fn main() {
         }
         if is_mouse_button_down(MouseButton::Left) {
             let (mouse_x, mouse_y) = mouse_position();
-
-            println!("{} {}", mouse_x, mouse_y);
             newfires.push((mouse_x as usize, mouse_y as usize));
         }
 
@@ -195,13 +196,14 @@ async fn main() {
             image.set_pixel(*x as u32, *y as u32, fire_color);
         }
 
-        //newfires.sort_by(|(x1, y1), (x2, y2)| y2.cmp(&y1).then(x2.cmp(&x1)));
-        newfires.sort_by(|(x1, y1), (x2, y2)| {
-            cellfield
-                .indices(*x2, *y2)
-                .0
-                .cmp(&cellfield.indices(*x1, *y1).0)
-        });
+        if false {
+            newfires.sort_by(|(x1, y1), (x2, y2)| {
+                cellfield
+                    .indices(*x2, *y2)
+                    .0
+                    .cmp(&cellfield.indices(*x1, *y1).0)
+            });
+        }
 
         fires = newfires;
 
