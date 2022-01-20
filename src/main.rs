@@ -168,6 +168,12 @@ async fn main() {
         for _ in 0..fireproc.draw(10f32.powf(logfireprob) * h as f32 * w as f32) as usize {
             newfires.push((rand::gen_range(0, w), rand::gen_range(0, h)));
         }
+        if is_mouse_button_down(MouseButton::Left) {
+            let (mouse_x, mouse_y) = mouse_position();
+
+            println!("{} {}", mouse_x, mouse_y);
+            newfires.push((mouse_x as usize, mouse_y as usize));
+        }
 
         colorphase += colorspeed * 6.28 / 10000.;
         let g = colorphase.cos().abs();
