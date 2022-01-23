@@ -94,6 +94,7 @@ async fn main() {
     let mut logfireprob: f32 = fireprob.log10();
     let mut logtreeprob: f32 = treeprob.log10();
     let mut colorspeed: f32 = 10.;
+    let mut firemaxage: f32 = 10.;
 
     let w = screen_width() as usize;
     let h = screen_height() as usize;
@@ -128,6 +129,7 @@ async fn main() {
     let mut colorphase: f32 = 0.;
 
     let mut fireproc = PoissonProcess::new();
+    let mut treeproc = PoissonProcess::new();
 
     simulate_mouse_with_touch(false);
 
@@ -145,6 +147,7 @@ async fn main() {
                     ui.slider(hash!(), "logfireprob", -10f32..-5f32, &mut logfireprob);
                     ui.slider(hash!(), "logtreeprob", -10f32..-2f32, &mut logtreeprob);
                     ui.slider(hash!(), "colorspeed", 0f32..10f32, &mut colorspeed);
+                    ui.slider(hash!(), "firemaxage", 0f32..20f32, &mut firemaxage);
 
                     ui.tree_node(hash!(), "Save PNG", |ui| {
                         let btext: String = match recording {
@@ -162,12 +165,11 @@ async fn main() {
 
         let w = image.width();
         let h = image.height();
-        let maxage: usize = 5;
 
         let mut newfires: Vec<Fire> = Vec::new();
 
         for Fire(x, y, age) in &fires {
-            if *age < maxage {
+            if *age < firemaxage.floor() as usize {
                 newfires.push(Fire(*x, *y, *age + 1));
             } else {
                 image.set_pixel(*x as u32, *y as u32, BLACK);
@@ -208,7 +210,7 @@ async fn main() {
         colorphase += colorspeed * 6.28 / 10000.;
         let g = colorphase.cos().abs();
         let b = colorphase.sin().abs();
-        for _ in 0..(10f32.powf(logtreeprob) * h as f32 * w as f32) as i32 {
+        for _ in 0..treeproc.draw(10f32.powf(logtreeprob) * h as f32 * w as f32) {
             let x = rand::gen_range(0, w);
             let y = rand::gen_range(0, h);
             if !cellfield.get(x, y) {
@@ -218,7 +220,7 @@ async fn main() {
         }
 
         for Fire(x, y, age) in &newfires {
-            let grn: f32 = *age as f32 / maxage as f32;
+            let grn: f32 = *age as f32 / firemaxage;
             image.set_pixel(*x as u32, *y as u32, Color::new(1., grn, 0., 1.0));
         }
 
