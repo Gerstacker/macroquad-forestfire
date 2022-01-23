@@ -42,6 +42,8 @@ impl PoissonProcess {
     }
 }
 
+struct Fire(usize, usize, usize);
+
 struct CellField {
     arr: Vec<u64>,
     ystride: usize,
@@ -76,10 +78,18 @@ impl CellField {
     }
 }
 
-#[macroquad::main("Forest Fires")]
+fn conf() -> Conf {
+    Conf {
+        window_title: String::from("ASDFASDF"),
+        high_dpi: false,
+        ..Default::default()
+    }
+}
+
+#[macroquad::main(conf)]
 async fn main() {
-    let fireprob: f32 = 5e-7;
-    let treeprob: f32 = 5e-4;
+    let fireprob: f32 = 1e-6;
+    let treeprob: f32 = 1e-3;
 
     let mut logfireprob: f32 = fireprob.log10();
     let mut logtreeprob: f32 = treeprob.log10();
@@ -89,7 +99,7 @@ async fn main() {
     let h = screen_height() as usize;
 
     let mut cellfield = CellField::new(w, h);
-    let mut fires: Vec<(usize, usize)> = Vec::new();
+    let mut fires: Vec<Fire> = Vec::new();
 
     let mut image = Image::gen_image_color(w as u16, h as u16, BLACK);
 
@@ -152,10 +162,16 @@ async fn main() {
 
         let w = image.width();
         let h = image.height();
+        let maxage: usize = 5;
 
-        let mut newfires: Vec<(usize, usize)> = Vec::new();
+        let mut newfires: Vec<Fire> = Vec::new();
 
-        for (x, y) in &fires {
+        for Fire(x, y, age) in &fires {
+            if *age < maxage {
+                newfires.push(Fire(*x, *y, *age + 1));
+            } else {
+                image.set_pixel(*x as u32, *y as u32, BLACK);
+            }
             for j in 0..4 {
                 let nx = *x as i32 + ngh[j][0];
                 let ny = *y as i32 + ngh[j][1];
@@ -163,29 +179,30 @@ async fn main() {
                     let cx = nx as usize;
                     let cy = ny as usize;
                     if cellfield.get(cx, cy) {
-                        newfires.push((cx, cy));
+                        newfires.push(Fire(cx, cy, 0));
                         cellfield.clr(cx, cy);
                     }
                 }
             }
         }
 
-        for _ in 0..fireproc.draw(10f32.powf(logfireprob) * h as f32 * w as f32) as usize {
-            newfires.push((rand::gen_range(0, w), rand::gen_range(0, h)));
+        for _ in 0..fireproc.draw(10f32.powf(logfireprob) * h as f32 * w as f32) {
+            newfires.push(Fire(rand::gen_range(0, w), rand::gen_range(0, h), 0));
         }
 
         if is_mouse_button_down(MouseButton::Left) {
             let (mouse_x, mouse_y) = mouse_position();
             let mx = clamp(mouse_x as usize, 0, w - 1);
             let my = clamp(mouse_y as usize, 0, h - 1);
-            newfires.push((mx, my));
+            newfires.push(Fire(mx, my, 0));
         }
 
         if touches().len() == 1 {
             let touchpos = touches()[0].position;
+
             let mx = clamp(touchpos.x as usize, 0, w - 1);
             let my = clamp(touchpos.y as usize, 0, h - 1);
-            newfires.push((mx, my));
+            newfires.push(Fire(mx, my, 0));
         }
 
         colorphase += colorspeed * 6.28 / 10000.;
@@ -200,16 +217,13 @@ async fn main() {
             cellfield.set(x, y);
         }
 
-        for (x, y) in &fires {
-            image.set_pixel(*x as u32, *y as u32, BLACK);
-        }
-
-        for (x, y) in &newfires {
-            image.set_pixel(*x as u32, *y as u32, fire_color);
+        for Fire(x, y, age) in &newfires {
+            let grn: f32 = *age as f32 / maxage as f32;
+            image.set_pixel(*x as u32, *y as u32, Color::new(1., grn, 0., 1.0));
         }
 
         if false {
-            newfires.sort_by(|(x1, y1), (x2, y2)| {
+            newfires.sort_by(|Fire(x1, y1, _), Fire(x2, y2, _)| {
                 cellfield
                     .indices(*x2, *y2)
                     .0
