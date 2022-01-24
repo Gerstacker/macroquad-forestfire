@@ -42,6 +42,11 @@ impl PoissonProcess {
     }
 }
 
+fn rand_range_usize(low: usize, high: usize) -> usize {
+    let r = rand::rand() as f64 / (u32::MAX as f64 + 1f64);
+    return low + (r * (high - low) as f64).floor() as usize;
+}
+
 struct Fire(usize, usize, usize);
 
 struct CellField {
@@ -80,7 +85,7 @@ impl CellField {
 
 fn conf() -> Conf {
     Conf {
-        window_title: String::from("ASDFASDF"),
+        window_title: String::from("Forest Fires: <space> or double touch for controls"),
         high_dpi: false,
         ..Default::default()
     }
@@ -88,13 +93,14 @@ fn conf() -> Conf {
 
 #[macroquad::main(conf)]
 async fn main() {
-    let fireprob: f32 = 5e-7;
+    let fireprob: f32 = 1e-6;
     let treeprob: f32 = 1e-3;
 
     let mut logfireprob: f32 = fireprob.log10();
     let mut logtreeprob: f32 = treeprob.log10();
-    let mut colorspeed: f32 = 10.;
+    let mut colorspeed: f32 = 5.;
     let mut firemaxage: f32 = 10.;
+    let mut eightconn: bool = false;
 
     let w = screen_width() as usize;
     let h = screen_height() as usize;
@@ -105,11 +111,10 @@ async fn main() {
     let mut image = Image::gen_image_color(w as u16, h as u16, BLACK);
 
     let alive_color = Color::new(0.0, 0.5, 0.0, 1.0);
-    let fire_color = Color::new(1.0, 0.0, 0.0, 1.0);
 
     for y in 0..h {
         for x in 0..w {
-            if rand::gen_range(0, 2u32) == 0 {
+            if rand_range_usize(0, 4 as usize) == 0 {
                 cellfield.set(x, y);
                 image.set_pixel(x as u32, y as u32, alive_color);
             }
@@ -117,7 +122,16 @@ async fn main() {
     }
     let texture = Texture2D::from_image(&image);
 
-    let ngh: [[i32; 2]; 4] = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+    let ngh: [[i32; 2]; 8] = [
+        [-1, 0],
+        [1, 0],
+        [0, -1],
+        [0, 1],
+        [-1, -1],
+        [-1, 1],
+        [1, -1],
+        [1, 1],
+    ];
 
     let mut frno: usize = 0;
 
@@ -148,6 +162,7 @@ async fn main() {
                     ui.slider(hash!(), "logtreeprob", -10f32..-2f32, &mut logtreeprob);
                     ui.slider(hash!(), "colorspeed", 0f32..10f32, &mut colorspeed);
                     ui.slider(hash!(), "firemaxage", 0f32..20f32, &mut firemaxage);
+                    ui.checkbox(hash!(), "8-connected", &mut eightconn);
 
                     ui.tree_node(hash!(), "Save PNG", |ui| {
                         let btext: String = match recording {
@@ -165,16 +180,21 @@ async fn main() {
 
         let w = image.width();
         let h = image.height();
+        let mut numngh: usize = 4;
+        if eightconn {
+            numngh = 8;
+        }
 
         let mut newfires: Vec<Fire> = Vec::new();
 
+        // propagate new fires, age out old fires
         for Fire(x, y, age) in &fires {
             if *age < firemaxage.floor() as usize {
                 newfires.push(Fire(*x, *y, *age + 1));
             } else {
                 image.set_pixel(*x as u32, *y as u32, BLACK);
             }
-            for j in 0..4 {
+            for j in 0..numngh {
                 let nx = *x as i32 + ngh[j][0];
                 let ny = *y as i32 + ngh[j][1];
                 if nx >= 0 && nx < w as i32 && ny >= 0 && ny < h as i32 {
@@ -188,8 +208,9 @@ async fn main() {
             }
         }
 
+        // spontaneous fires
         for _ in 0..fireproc.draw(10f32.powf(logfireprob) * h as f32 * w as f32) {
-            newfires.push(Fire(rand::gen_range(0, w), rand::gen_range(0, h), 0));
+            newfires.push(Fire(rand_range_usize(0, w), rand_range_usize(0, h), 0));
         }
 
         if is_mouse_button_down(MouseButton::Left) {
@@ -207,12 +228,13 @@ async fn main() {
             newfires.push(Fire(mx, my, 0));
         }
 
+        // new trees
         colorphase += colorspeed * 6.28 / 10000.;
         let g = colorphase.cos().abs();
         let b = colorphase.sin().abs();
         for _ in 0..treeproc.draw(10f32.powf(logtreeprob) * h as f32 * w as f32) {
-            let x = rand::gen_range(0, w);
-            let y = rand::gen_range(0, h);
+            let x = rand_range_usize(0, w);
+            let y = rand_range_usize(0, h);
             if !cellfield.get(x, y) {
                 image.set_pixel(x as u32, y as u32, Color::new(0.0, g, b, 1.0));
             }
