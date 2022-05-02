@@ -33,18 +33,13 @@ impl PoissonProcess {
     fn draw(&mut self, avgper: f32) -> usize {
         let PoissonProcess(ref mut acc) = self;
 
-        let ur = ((1.0 + rand::rand() as f64) / u32::MAX as f64) as f32;
+        let ur: f32 = rand::gen_range(f32::EPSILON, 1.);
         let er = -avgper * ur.ln();
         let newacc = *acc + er;
         let faf = newacc.floor();
         *acc = newacc - faf;
         faf as usize
     }
-}
-
-fn rand_range_usize(low: usize, high: usize) -> usize {
-    let r = rand::rand() as f64 / (u32::MAX as f64 + 1f64);
-    return low + (r * (high - low) as f64).floor() as usize;
 }
 
 struct Fire(usize, usize, usize);
@@ -114,7 +109,7 @@ async fn main() {
 
     for y in 0..h {
         for x in 0..w {
-            if rand_range_usize(0, 4 as usize) == 0 {
+            if rand::gen_range(0, 4 as usize) == 0 {
                 cellfield.set(x, y);
                 image.set_pixel(x as u32, y as u32, alive_color);
             }
@@ -180,10 +175,7 @@ async fn main() {
 
         let w = image.width();
         let h = image.height();
-        let mut numngh: usize = 4;
-        if eightconn {
-            numngh = 8;
-        }
+        let numngh: usize = if eightconn { 8 } else { 4 };
 
         let mut newfires: Vec<Fire> = Vec::new();
 
@@ -210,7 +202,7 @@ async fn main() {
 
         // spontaneous fires
         for _ in 0..fireproc.draw(10f32.powf(logfireprob) * h as f32 * w as f32) {
-            newfires.push(Fire(rand_range_usize(0, w), rand_range_usize(0, h), 0));
+            newfires.push(Fire(rand::gen_range(0, w), rand::gen_range(0, h), 0));
         }
 
         if is_mouse_button_down(MouseButton::Left) {
@@ -233,8 +225,8 @@ async fn main() {
         let g = colorphase.cos().abs();
         let b = colorphase.sin().abs();
         for _ in 0..treeproc.draw(10f32.powf(logtreeprob) * h as f32 * w as f32) {
-            let x = rand_range_usize(0, w);
-            let y = rand_range_usize(0, h);
+            let x = rand::gen_range(0, w);
+            let y = rand::gen_range(0, h);
             if !cellfield.get(x, y) {
                 image.set_pixel(x as u32, y as u32, Color::new(0.0, g, b, 1.0));
             }
