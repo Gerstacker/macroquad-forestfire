@@ -259,7 +259,7 @@ async fn main() {
 
         texture.update(&image);
 
-        draw_texture(texture, 0., 0., WHITE);
+        draw_texture(&texture, 0., 0., WHITE);
 
         if recording && frno % recskip.floor() as usize == 0 {
             image.export_png(format!("frm{:05}.png", rfrm).as_str());

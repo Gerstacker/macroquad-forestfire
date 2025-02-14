@@ -9,4 +9,4 @@ edition = "2021"
 opt-level = 3
 
 [dependencies]
-macroquad = "0.3"
+macroquad = "0.4"
