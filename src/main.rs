@@ -93,14 +93,14 @@ fn conf() -> Conf {
 
 #[macroquad::main(conf)]
 async fn main() {
-    let fireprob: f32 = 1e-6;
-    let treeprob: f32 = 1e-3;
+    let fireprob: f32 = 1e-7;
+    let treeprob: f32 = 1e-4;
 
     let mut logfireprob: f32 = fireprob.log10();
     let mut logtreeprob: f32 = treeprob.log10();
     let mut colorspeed: f32 = 5.;
-    let mut firemaxage: f32 = 10.;
-    let mut eightconn: bool = false;
+    let mut firemaxage: f32 = 12.;
+    let mut eightconn: bool = true;
 
     let w = screen_width() as usize;
     let h = screen_height() as usize;
